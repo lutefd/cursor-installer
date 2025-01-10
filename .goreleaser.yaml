@@ -48,7 +48,7 @@ brews:
     repository:
       owner: lutefd
       name: homebrew-tools
-      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
     commit_author:
       name: lutefd
       email: lfaddourado@gmail.com

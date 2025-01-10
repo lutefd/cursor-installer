@@ -5,9 +5,7 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-  packages: write
+permissions: write-all
 
 jobs:
   goreleaser:
@@ -31,4 +29,3 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
