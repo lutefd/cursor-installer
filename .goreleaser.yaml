@@ -41,12 +41,17 @@ changelog:
       - Merge branch
 
 brews:
-  - repository:
-      owner: lutefd
-      name: homebrew-tools
+  - name: cursor-installer
     homepage: "https://github.com/lutefd/cursor-installer"
     description: "A CLI tool for installing the Cursor editor on Linux"
     license: "MIT"
+    repository:
+      owner: lutefd
+      name: homebrew-tools
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: lutefd
+      email: lfaddourado@gmail.com
     test: |
       system "#{bin}/cursor-installer --help"
     install: |
