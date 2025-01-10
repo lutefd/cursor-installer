@@ -42,7 +42,7 @@ Cursor Installer provides both standard and download-only installation modes.
 ### Standard Installation
 
 ```bash
-sudo cursor-installer
+cursor-installer [flags]
 ```
 
 You can use the following flags:
@@ -58,7 +58,13 @@ Flags:
 To download without installing:
 
 ```bash
-sudo cursor-installer --download-only
+cursor-installer --download-only
+```
+
+Or
+
+```bash
+cursor-installer -d
 ```
 
 ## Features
