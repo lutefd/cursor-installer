@@ -12,6 +12,7 @@ Cursor Installer is a CLI tool designed to streamline the installation of the Cu
   - [Usage](#usage)
     - [Standard Installation](#standard-installation)
     - [Download-Only Mode](#download-only-mode)
+    - [Version Information](#version-information)
   - [Features](#features)
   - [Project Structure](#project-structure)
   - [Development](#development)
@@ -51,6 +52,7 @@ Flags:
 
 - `-d, --download-only`: Only download Cursor without installing
 - `-f, --force`: Force installation even if Cursor is already installed
+- `-v, --version`: Display version information
 - `-h, --help`: Display help for cursor-installer
 
 ### Download-Only Mode
@@ -67,6 +69,20 @@ Or
 cursor-installer -d
 ```
 
+### Version Information
+
+To check the version of both Cursor and the installer:
+
+```bash
+cursor-installer --version
+```
+
+Or
+
+```bash
+cursor-installer -v
+```
+
 ## Features
 
 - Interactive installation progress UI
@@ -77,6 +93,7 @@ cursor-installer -d
 - Command-line accessibility via symlink
 - Update checking and version tracking
 - Force installation option for reinstalls
+- Download-only mode for manual installations
 
 ## Project Structure
 
@@ -89,12 +106,22 @@ cursor-installer/
 │       └── main.go
 ├── internal/
 │   ├── app/
-│   │   ├── app.go
-│   │   └── metadata.go
+│   │   ├── app.go         # Core installer functionality
+│   │   ├── desktop.go     # Desktop integration
+│   │   ├── files.go       # File operations
+│   │   ├── metadata.go    # Installation metadata
+│   │   ├── update.go      # Update checking
+│   │   └── version.go     # Version information
 │   ├── cli/
-│   │   └── cli.go
+│   │   └── cli.go         # CLI command handling
 │   └── ui/
-│       └── ui.go
+│       ├── messages.go    # Message types and errors
+│       ├── model.go       # Model types and constructors
+│       ├── steps.go       # Step handling logic
+│       ├── styles.go      # UI styles
+│       ├── ui.go          # Main UI package
+│       ├── update.go      # Model update logic
+│       └── view.go        # Model view logic
 ├── .gitignore
 ├── go.mod
 ├── go.sum
@@ -106,6 +133,9 @@ cursor-installer/
 - `internal/app`: Implements core installation functionality and metadata management
 - `internal/cli`: Handles command-line interface using Cobra
 - `internal/ui`: Implements the interactive UI using Bubble Tea
+  - Organized into logical components for better maintainability
+  - Separates concerns between model, view, and update logic
+  - Centralizes styles and message types
 
 ## Development
 
