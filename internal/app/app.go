@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -31,6 +32,15 @@ func NewInstaller(downloadOnly, forceInstall bool, configureSettings bool) *Inst
 		forceInstall:      forceInstall,
 		configureSettings: configureSettings,
 	}
+}
+
+func (i *Installer) CheckSudoAccess() error {
+	cmd := exec.Command("sudo", "-n", "true")
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("this installer requires sudo privileges. Please ensure you have sudo access and try again")
+	}
+	return nil
 }
 
 func (i *Installer) CheckInstallation() *InstallationStatus {

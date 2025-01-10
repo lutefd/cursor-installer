@@ -38,20 +38,12 @@ func (i *Installer) readMetadata() (*CursorMetadata, error) {
 	tmpFile.Close()
 	defer os.Remove(tmpPath)
 
-	cmd := exec.Command("sudo", "-S", "cp", metadataPath, tmpPath)
+	cmd := exec.Command("sudo", "-S", "sh", "-c", fmt.Sprintf("cp %s %s && chmod 644 %s", metadataPath, tmpPath, tmpPath))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("failed to copy metadata file (sudo error): %v", err)
-	}
-
-	cmd = exec.Command("sudo", "-S", "chmod", "644", tmpPath)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("failed to set permissions on temporary file (sudo error): %v", err)
+		return nil, fmt.Errorf("failed to copy and set permissions on metadata file (sudo error): %v", err)
 	}
 
 	data, err := os.ReadFile(tmpPath)
@@ -85,20 +77,12 @@ func (i *Installer) writeMetadata(metadata *CursorMetadata) error {
 	}
 	tmpFile.Close()
 
-	cmd := exec.Command("sudo", "-S", "mv", tmpPath, metadataPath)
+	cmd := exec.Command("sudo", "-S", "sh", "-c", fmt.Sprintf("mv %s %s && chmod 644 %s", tmpPath, metadataPath, metadataPath))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to install metadata file (sudo error): %v", err)
-	}
-
-	cmd = exec.Command("sudo", "-S", "chmod", "644", metadataPath)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to set metadata file permissions (sudo error): %v", err)
+		return fmt.Errorf("failed to install and set permissions on metadata file (sudo error): %v", err)
 	}
 
 	return nil

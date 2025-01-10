@@ -49,6 +49,11 @@ func NewModel(downloadOnly, forceInstall bool, configureSettings bool) model {
 
 	steps := []InstallationStep{
 		{
+			name:    "Check Permissions",
+			message: "Checking sudo access...",
+			run:     installer.CheckSudoAccess,
+		},
+		{
 			name:    "Check Installation",
 			message: checkMessage,
 			run:     checkInstallationWrapper(installer),
