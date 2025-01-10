@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,18 +19,10 @@ type CursorMetadata struct {
 }
 
 func (i *Installer) GetLatestVersion() (string, error) {
-	resp, err := http.Head(cursorURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest version: %v", err)
+	if i.version != "" {
+		return i.version, nil
 	}
-	defer resp.Body.Close()
-
-	version := resp.Header.Get("X-Version")
-	if version == "" {
-		version = "latest"
-	}
-
-	return version, nil
+	return "unknown", nil
 }
 
 func (i *Installer) readMetadata() (*CursorMetadata, error) {
