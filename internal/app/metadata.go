@@ -35,11 +35,30 @@ func (i *Installer) GetLatestVersion() (string, error) {
 }
 
 func (i *Installer) readMetadata() (*CursorMetadata, error) {
-	data, err := os.ReadFile(metadataPath)
+	if _, err := os.Stat(metadataPath); os.IsNotExist(err) {
+		return nil, nil
+	}
+
+	tmpFile, err := os.CreateTemp("", "cursor-metadata-read-*.json")
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
+		return nil, fmt.Errorf("failed to create temporary file: %v", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	defer os.Remove(tmpPath)
+
+	cmd := exec.Command("sudo", "cp", metadataPath, tmpPath)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to copy metadata file: %v", err)
+	}
+
+	cmd = exec.Command("sudo", "chmod", "644", tmpPath)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to set permissions on temporary file: %v", err)
+	}
+
+	data, err := os.ReadFile(tmpPath)
+	if err != nil {
 		return nil, fmt.Errorf("failed to read metadata: %v", err)
 	}
 
@@ -56,18 +75,20 @@ func (i *Installer) writeMetadata(metadata *CursorMetadata) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary metadata file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
 
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %v", err)
 	}
 
-	if err := os.WriteFile(tmpFile.Name(), data, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write metadata: %v", err)
 	}
+	tmpFile.Close()
 
-	cmd := exec.Command("sudo", "mv", tmpFile.Name(), metadataPath)
+	cmd := exec.Command("sudo", "mv", tmpPath, metadataPath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to install metadata file: %v", err)
 	}
