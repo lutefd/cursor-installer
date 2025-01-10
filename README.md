@@ -24,7 +24,7 @@ Cursor Installer is a CLI tool designed to streamline the installation of the Cu
 To install Cursor Installer, you need to have Go installed on your system. Then, you can use the following command:
 
 ```bash
-go install github.com/lutefd/cursor-installer/cmd/cursor-installer@latest
+go install github.com/lutefd/cursor-installer@latest
 ```
 
 Alternatively, you can clone the repository and build it manually:
