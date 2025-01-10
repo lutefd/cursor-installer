@@ -174,7 +174,6 @@ func NewModel(downloadOnly, forceInstall bool) model {
 	}
 }
 
-// Custom error type for up-to-date case
 type upToDateError struct {
 	version string
 }
