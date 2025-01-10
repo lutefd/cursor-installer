@@ -27,14 +27,11 @@ func NewInstaller(downloadOnly, forceInstall bool) *Installer {
 
 func (i *Installer) CheckInstallation() error {
 	_, err := os.Stat("/opt/cursor.AppImage")
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to check installation: %v", err)
-	}
-	if !i.forceInstall {
+	if err == nil && !i.forceInstall {
 		return fmt.Errorf("cursor is already installed. Use --force to reinstall")
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check installation: %v", err)
 	}
 	return nil
 }
@@ -72,6 +69,29 @@ func (i *Installer) MoveToOpt() error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to move file to /opt/: %v", err)
 	}
+	return nil
+}
+
+func (i *Installer) ExtractIcon() error {
+	cmd := exec.Command("/opt/cursor.AppImage", "--appimage-extract")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to extract AppImage: %v", err)
+	}
+
+	iconPath := "squashfs-root/usr/share/icons/hicolor/512x512/apps/cursor.png"
+	if _, err := os.Stat(iconPath); err != nil {
+		return fmt.Errorf("icon not found in extracted contents: %v", err)
+	}
+
+	cmd = exec.Command("sudo", "mv", iconPath, "/opt/cursor.png")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to move icon: %v", err)
+	}
+
+	if err := os.RemoveAll("squashfs-root"); err != nil {
+		return fmt.Errorf("failed to clean up extracted contents: %v", err)
+	}
+
 	return nil
 }
 
