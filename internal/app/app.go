@@ -19,7 +19,6 @@ type Installer struct {
 	downloadOnly bool
 	forceInstall bool
 }
-
 type InstallationStatus struct {
 	AlreadyUpToDate bool
 	CurrentVersion  string
@@ -38,6 +37,12 @@ func (i *Installer) ensureInstallDir() error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to create install directory: %v", err)
 	}
+
+	cmd = exec.Command("sudo", "chmod", "755", installDir)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set permissions on install directory: %v", err)
+	}
+
 	return nil
 }
 
@@ -50,7 +55,7 @@ func (i *Installer) CheckInstallation() *InstallationStatus {
 	if metadata == nil {
 		_, err := os.Stat(filepath.Join(installDir, appImage))
 		if os.IsNotExist(err) {
-			return &InstallationStatus{}
+			return &InstallationStatus{} // Not installed, good to proceed
 		}
 		if err != nil {
 			return &InstallationStatus{Error: fmt.Errorf("failed to check installation: %v", err)}
@@ -97,7 +102,7 @@ func (i *Installer) DownloadCursor() error {
 }
 
 func (i *Installer) MakeExecutable() error {
-	cmd := exec.Command("chmod", "+x", appImage)
+	cmd := exec.Command("sudo", "chmod", "+x", appImage)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to make file executable: %v", err)
 	}
@@ -109,14 +114,37 @@ func (i *Installer) MoveToOpt() error {
 		return err
 	}
 
-	cmd := exec.Command("sudo", "mv", appImage, filepath.Join(installDir, appImage))
+	targetPath := filepath.Join(installDir, appImage)
+	cmd := exec.Command("sudo", "mv", appImage, targetPath)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to move file to %s: %v", installDir, err)
 	}
+
+	cmd = exec.Command("sudo", "chmod", "755", targetPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set permissions: %v", err)
+	}
+
 	return nil
 }
 
 func (i *Installer) ExtractIcon() error {
+	tempDir, err := os.MkdirTemp("", "cursor-icon")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %v", err)
+	}
+
+	if err := os.Chdir(tempDir); err != nil {
+		return fmt.Errorf("failed to change to temp directory: %v", err)
+	}
+	defer os.Chdir(currentDir)
+
 	cmd := exec.Command(filepath.Join(installDir, appImage), "--appimage-extract")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract AppImage: %v", err)
@@ -127,13 +155,15 @@ func (i *Installer) ExtractIcon() error {
 		return fmt.Errorf("icon not found in extracted contents: %v", err)
 	}
 
-	cmd = exec.Command("sudo", "mv", iconPath, filepath.Join(installDir, "cursor.png"))
+	targetPath := filepath.Join(installDir, "cursor.png")
+	cmd = exec.Command("sudo", "cp", iconPath, targetPath)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to move icon: %v", err)
+		return fmt.Errorf("failed to copy icon: %v", err)
 	}
 
-	if err := os.RemoveAll("squashfs-root"); err != nil {
-		return fmt.Errorf("failed to clean up extracted contents: %v", err)
+	cmd = exec.Command("sudo", "chmod", "644", targetPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set icon permissions: %v", err)
 	}
 
 	return nil
@@ -148,10 +178,27 @@ Type=Application
 Categories=Development;
 `, filepath.Join(installDir, appImage), filepath.Join(installDir, "cursor.png"))
 
-	cmd := exec.Command("sudo", "bash", "-c", fmt.Sprintf("echo '%s' > /usr/share/applications/cursor.desktop", desktopEntry))
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to create desktop entry: %v", err)
+	tmpFile, err := os.CreateTemp("", "cursor-*.desktop")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %v", err)
 	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(desktopEntry); err != nil {
+		return fmt.Errorf("failed to write desktop entry: %v", err)
+	}
+	tmpFile.Close()
+
+	cmd := exec.Command("sudo", "mv", tmpFile.Name(), "/usr/share/applications/cursor.desktop")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to install desktop entry: %v", err)
+	}
+
+	cmd = exec.Command("sudo", "chmod", "644", "/usr/share/applications/cursor.desktop")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set desktop entry permissions: %v", err)
+	}
+
 	return nil
 }
 

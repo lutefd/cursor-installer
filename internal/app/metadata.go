@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 )
+
+const metadataPath = "/opt/cursor/metadata.json"
 
 type CursorMetadata struct {
 	Version        string    `json:"version"`
@@ -15,8 +18,6 @@ type CursorMetadata struct {
 	LastUpdateDate time.Time `json:"last_update_date"`
 	InstallPath    string    `json:"install_path"`
 }
-
-const metadataPath = "/opt/cursor/metadata.json"
 
 func (i *Installer) GetLatestVersion() (string, error) {
 	resp, err := http.Head(cursorURL)
@@ -51,13 +52,29 @@ func (i *Installer) readMetadata() (*CursorMetadata, error) {
 }
 
 func (i *Installer) writeMetadata(metadata *CursorMetadata) error {
+	tmpFile, err := os.CreateTemp("", "cursor-metadata-*.json")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary metadata file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal metadata: %v", err)
 	}
 
-	if err := os.WriteFile(metadataPath, data, 0644); err != nil {
+	if err := os.WriteFile(tmpFile.Name(), data, 0644); err != nil {
 		return fmt.Errorf("failed to write metadata: %v", err)
+	}
+
+	cmd := exec.Command("sudo", "mv", tmpFile.Name(), metadataPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to install metadata file: %v", err)
+	}
+
+	cmd = exec.Command("sudo", "chmod", "644", metadataPath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to set metadata file permissions: %v", err)
 	}
 
 	return nil
