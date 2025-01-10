@@ -44,9 +44,19 @@ type model struct {
 	currentStep    int
 	completedSteps []bool
 	err            error
-	quitting       bool
+	cancelled      bool
+	completed      bool
+	upToDate       bool
+	currentVersion string
 	installer      *app.Installer
 	steps          []InstallationStep
+}
+
+func checkInstallationWrapper(installer *app.Installer) func() error {
+	return func() error {
+		status := installer.CheckInstallation()
+		return status.Error
+	}
 }
 
 func NewModel(downloadOnly, forceInstall bool) model {
@@ -60,7 +70,7 @@ func NewModel(downloadOnly, forceInstall bool) model {
 		{
 			name:    "Check Installation",
 			message: "Checking if Cursor is already installed...",
-			run:     installer.CheckInstallation,
+			run:     checkInstallationWrapper(installer),
 		},
 		{
 			name:    "Download",
@@ -126,9 +136,19 @@ func (m model) runNextStep() tea.Cmd {
 		}
 
 		step := m.steps[m.currentStep]
-		err := step.run()
-		if err != nil {
-			return errMsg(err)
+
+		if m.currentStep == 0 {
+			status := m.installer.CheckInstallation()
+			if status.Error != nil {
+				return errMsg(status.Error)
+			}
+			if status.AlreadyUpToDate {
+				return upToDateMsg{version: status.CurrentVersion}
+			}
+		} else {
+			if err := step.run(); err != nil {
+				return errMsg(err)
+			}
 		}
 
 		return stepCompleteMsg{
@@ -138,16 +158,11 @@ func (m model) runNextStep() tea.Cmd {
 	}
 }
 
-type stepCompleteMsg struct {
-	stepName string
-	nextStep int
-}
-
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
-			m.quitting = true
+			m.cancelled = true
 			return m, tea.Quit
 		}
 
@@ -162,15 +177,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.currentStep < len(m.steps) {
 			return m, m.runNextStep()
 		}
+		m.completed = true
 		return m, tea.Quit
 
 	case errMsg:
 		m.err = msg
-		m.quitting = true
+		return m, tea.Quit
+
+	case upToDateMsg:
+		m.upToDate = true
+		m.currentVersion = msg.version
 		return m, tea.Quit
 
 	case doneMsg:
-		m.quitting = true
+		m.completed = true
 		return m, tea.Quit
 	}
 
@@ -178,11 +198,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	if m.quitting {
-		if m.err != nil {
-			return styleError.Render(fmt.Sprintf("Error: %v\n", m.err))
-		}
+	if m.cancelled {
+		return styleError.Render("Installation cancelled by user.\n")
+	}
+
+	if m.upToDate {
+		return styleSuccess.Render(fmt.Sprintf("✨ Cursor is already up to date (version %s)! ✨\n", m.currentVersion))
+	}
+
+	if m.completed {
 		return styleSuccess.Render("✨ Cursor installation completed successfully! ✨\n")
+	}
+
+	if m.err != nil {
+		return styleError.Render(fmt.Sprintf("Error: %v\n", m.err))
 	}
 
 	var s string
@@ -216,8 +245,16 @@ func (m model) View() string {
 	return s
 }
 
+type stepCompleteMsg struct {
+	stepName string
+	nextStep int
+}
+
 type errMsg error
 type doneMsg struct{}
+type upToDateMsg struct {
+	version string
+}
 
 func GetLongDescription() string {
 	return `Cursor Installer is a tool to download and install the Cursor editor.
