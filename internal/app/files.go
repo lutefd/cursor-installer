@@ -12,14 +12,20 @@ import (
 )
 
 func (i *Installer) ensureInstallDir() error {
-	cmd := exec.Command("sudo", "mkdir", "-p", installDir)
+	cmd := exec.Command("sudo", "-S", "mkdir", "-p", installDir)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to create install directory: %v", err)
+		return fmt.Errorf("failed to create install directory (sudo error): %v", err)
 	}
 
-	cmd = exec.Command("sudo", "chmod", "755", installDir)
+	cmd = exec.Command("sudo", "-S", "chmod", "755", installDir)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to set permissions on install directory: %v", err)
+		return fmt.Errorf("failed to set permissions on install directory (sudo error): %v", err)
 	}
 
 	return nil
@@ -61,9 +67,12 @@ func (i *Installer) DownloadCursor() error {
 }
 
 func (i *Installer) MakeExecutable() error {
-	cmd := exec.Command("sudo", "chmod", "+x", appImage)
+	cmd := exec.Command("sudo", "-S", "chmod", "+x", appImage)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to make file executable: %v", err)
+		return fmt.Errorf("failed to make file executable (sudo error): %v", err)
 	}
 	return nil
 }
@@ -74,14 +83,20 @@ func (i *Installer) MoveToOpt() error {
 	}
 
 	targetPath := filepath.Join(installDir, appImage)
-	cmd := exec.Command("sudo", "mv", appImage, targetPath)
+	cmd := exec.Command("sudo", "-S", "mv", appImage, targetPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to move file to %s: %v", installDir, err)
+		return fmt.Errorf("failed to move file to %s (sudo error): %v", installDir, err)
 	}
 
-	cmd = exec.Command("sudo", "chmod", "755", targetPath)
+	cmd = exec.Command("sudo", "-S", "chmod", "755", targetPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to set permissions: %v", err)
+		return fmt.Errorf("failed to set permissions (sudo error): %v", err)
 	}
 
 	return nil

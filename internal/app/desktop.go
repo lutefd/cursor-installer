@@ -35,14 +35,20 @@ func (i *Installer) ExtractIcon() error {
 	}
 
 	targetPath := filepath.Join(installDir, "cursor.png")
-	cmd = exec.Command("sudo", "cp", iconPath, targetPath)
+	cmd = exec.Command("sudo", "-S", "cp", iconPath, targetPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to copy icon: %v", err)
+		return fmt.Errorf("failed to copy icon (sudo error): %v", err)
 	}
 
-	cmd = exec.Command("sudo", "chmod", "644", targetPath)
+	cmd = exec.Command("sudo", "-S", "chmod", "644", targetPath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to set icon permissions: %v", err)
+		return fmt.Errorf("failed to set icon permissions (sudo error): %v", err)
 	}
 
 	return nil
@@ -68,23 +74,32 @@ Categories=Development;
 	}
 	tmpFile.Close()
 
-	cmd := exec.Command("sudo", "mv", tmpFile.Name(), "/usr/share/applications/cursor.desktop")
+	cmd := exec.Command("sudo", "-S", "mv", tmpFile.Name(), "/usr/share/applications/cursor.desktop")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to install desktop entry: %v", err)
+		return fmt.Errorf("failed to install desktop entry (sudo error): %v", err)
 	}
 
-	cmd = exec.Command("sudo", "chmod", "644", "/usr/share/applications/cursor.desktop")
+	cmd = exec.Command("sudo", "-S", "chmod", "644", "/usr/share/applications/cursor.desktop")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to set desktop entry permissions: %v", err)
+		return fmt.Errorf("failed to set desktop entry permissions (sudo error): %v", err)
 	}
 
 	return nil
 }
 
 func (i *Installer) CreateSymlink() error {
-	cmd := exec.Command("sudo", "ln", "-sf", filepath.Join(installDir, appImage), "/usr/local/bin/cursor")
+	cmd := exec.Command("sudo", "-S", "ln", "-sf", filepath.Join(installDir, appImage), "/usr/local/bin/cursor")
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to create symlink: %v", err)
+		return fmt.Errorf("failed to create symlink (sudo error): %v", err)
 	}
 	return nil
 }
