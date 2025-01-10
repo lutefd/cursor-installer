@@ -33,7 +33,7 @@ Alternatively, you can clone the repository and build it manually:
 ```bash
 git clone https://github.com/lutefd/cursor-installer.git
 cd cursor-installer
-make build
+go build .
 ```
 
 ## Usage
@@ -54,6 +54,7 @@ Flags:
 - `-f, --force`: Force installation even if Cursor is already installed
 - `-v, --version`: Display version information
 - `-h, --help`: Display help for cursor-installer
+- `-c, --configure`: Configure Cursor settings after installation
 
 ### Download-Only Mode
 
@@ -134,6 +135,9 @@ cursor-installer/
 - `internal/cli`: Handles command-line interface using Cobra
 - `internal/ui`: Implements the interactive UI using Bubble Tea
   - Organized into logical components for better maintainability
+  - Organized into logical components for better maintainability
+  - Separates concerns between model, view, and update logic
+  - Centralizes styles and message types
   - Separates concerns between model, view, and update logic
   - Centralizes styles and message types
 
@@ -157,12 +161,7 @@ To set up the development environment, follow these steps:
 3. Build the project:
 
    ```bash
-   go build ./cmd/cursor-installer
-   ```
-
-4. Run tests:
-   ```bash
-   go test ./...
+   go build .
    ```
 
 ### Required Dependencies
