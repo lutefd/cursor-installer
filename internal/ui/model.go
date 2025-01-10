@@ -33,12 +33,12 @@ func checkInstallationWrapper(installer *app.Installer) func() error {
 	}
 }
 
-func NewModel(downloadOnly, forceInstall bool) model {
+func NewModel(downloadOnly, forceInstall bool, configureSettings bool) model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#4ECDC4"))
 
-	installer := app.NewInstaller(downloadOnly, forceInstall)
+	installer := app.NewInstaller(downloadOnly, forceInstall, configureSettings)
 
 	var checkMessage string
 	if downloadOnly && !forceInstall && !installer.CheckInstallation().AlreadyUpToDate {
@@ -97,7 +97,7 @@ func NewModel(downloadOnly, forceInstall bool) model {
 		steps = append(steps,
 			InstallationStep{
 				name:    "Install",
-				message: "Moving Cursor to /opt directory...",
+				message: "Installing Cursor...",
 				run:     installer.MoveToOpt,
 			},
 			InstallationStep{
@@ -106,13 +106,13 @@ func NewModel(downloadOnly, forceInstall bool) model {
 				run:     installer.ExtractIcon,
 			},
 			InstallationStep{
-				name:    "Desktop Entry",
+				name:    "Create Desktop Entry",
 				message: "Creating desktop entry...",
 				run:     installer.CreateDesktopEntry,
 			},
 			InstallationStep{
 				name:    "Create Symlink",
-				message: "Creating symlink in /usr/local/bin...",
+				message: "Creating command line symlink...",
 				run:     installer.CreateSymlink,
 			},
 			InstallationStep{
@@ -121,13 +121,21 @@ func NewModel(downloadOnly, forceInstall bool) model {
 				run:     installer.UpdateMetadata,
 			},
 		)
+
+		if configureSettings {
+			steps = append(steps, InstallationStep{
+				name:    "Configure Settings",
+				message: "Configuring Cursor settings...",
+				run:     installer.ConfigureCursor,
+			})
+		}
 	}
 
 	return model{
 		spinner:        s,
-		installer:      installer,
 		steps:          steps,
 		completedSteps: make([]bool, len(steps)),
+		installer:      installer,
 		downloadOnly:   downloadOnly,
 	}
 }
