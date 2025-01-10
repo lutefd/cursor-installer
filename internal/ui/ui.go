@@ -105,20 +105,39 @@ func NewModel(downloadOnly, forceInstall bool) model {
 			message: "Checking if Cursor is already installed...",
 			run:     checkInstallationWrapper(installer),
 		},
-		{
+	}
+
+	info, err := installer.GetVersionInfo()
+	if err == nil && info.IsInstalled && !forceInstall {
+		steps = append(steps, InstallationStep{
+			name:    "Check Updates",
+			message: "Checking for available updates...",
+			run: func() error {
+				hasUpdate, err := installer.CheckForUpdates()
+				if err != nil {
+					return err
+				}
+				if !hasUpdate {
+					return &upToDateError{version: info.CursorVersion}
+				}
+				return nil
+			},
+		})
+	} else {
+		steps = append(steps, InstallationStep{
 			name:    "Download",
 			message: "Downloading latest version of Cursor...",
-			run:     installer.DownloadCursor,
-		},
+			run: func() error {
+				if err := installer.DownloadCursor(); err != nil {
+					return err
+				}
+				return installer.MakeExecutable()
+			},
+		})
 	}
 
 	if !downloadOnly {
 		steps = append(steps,
-			InstallationStep{
-				name:    "Make Executable",
-				message: "Making the AppImage executable...",
-				run:     installer.MakeExecutable,
-			},
 			InstallationStep{
 				name:    "Install",
 				message: "Moving Cursor to /opt directory...",
@@ -155,6 +174,15 @@ func NewModel(downloadOnly, forceInstall bool) model {
 	}
 }
 
+// Custom error type for up-to-date case
+type upToDateError struct {
+	version string
+}
+
+func (e *upToDateError) Error() string {
+	return "already up to date"
+}
+
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
@@ -180,6 +208,9 @@ func (m model) runNextStep() tea.Cmd {
 			}
 		} else {
 			if err := step.run(); err != nil {
+				if upToDateErr, ok := err.(*upToDateError); ok {
+					return upToDateMsg{version: upToDateErr.version}
+				}
 				return errMsg(err)
 			}
 		}
