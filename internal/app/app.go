@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 const (
-	cursorURL = "https://downloader.cursor.sh/linux/appImage/x64"
-	appImage  = "cursor.AppImage"
+	cursorURL  = "https://downloader.cursor.sh/linux/appImage/x64"
+	appImage   = "Cursor.AppImage"
+	installDir = "/opt/cursor"
 )
 
 type Installer struct {
@@ -25,15 +27,44 @@ func NewInstaller(downloadOnly, forceInstall bool) *Installer {
 	}
 }
 
-func (i *Installer) CheckInstallation() error {
-	_, err := os.Stat("/opt/cursor.AppImage")
-	if err == nil && !i.forceInstall {
-		return fmt.Errorf("cursor is already installed. Use --force to reinstall")
-	}
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to check installation: %v", err)
+func (i *Installer) ensureInstallDir() error {
+	cmd := exec.Command("sudo", "mkdir", "-p", installDir)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to create install directory: %v", err)
 	}
 	return nil
+}
+
+func (i *Installer) CheckInstallation() error {
+	metadata, err := i.readMetadata()
+	if err != nil {
+		return fmt.Errorf("failed to read installation metadata: %v", err)
+	}
+
+	if metadata == nil {
+		_, err := os.Stat(filepath.Join(installDir, appImage))
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to check installation: %v", err)
+		}
+		if !i.forceInstall {
+			return fmt.Errorf("cursor is already installed (legacy). Use --force to reinstall")
+		}
+		return nil
+	}
+
+	latestVersion, err := i.GetLatestVersion()
+	if err != nil {
+		return fmt.Errorf("failed to check for updates: %v", err)
+	}
+
+	if latestVersion != metadata.Version || i.forceInstall {
+		return nil
+	}
+
+	return fmt.Errorf("cursor version %s is already installed and up to date", metadata.Version)
 }
 
 func (i *Installer) DownloadCursor() error {
@@ -65,15 +96,19 @@ func (i *Installer) MakeExecutable() error {
 }
 
 func (i *Installer) MoveToOpt() error {
-	cmd := exec.Command("sudo", "mv", appImage, "/opt/cursor.AppImage")
+	if err := i.ensureInstallDir(); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("sudo", "mv", appImage, filepath.Join(installDir, appImage))
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to move file to /opt/: %v", err)
+		return fmt.Errorf("failed to move file to %s: %v", installDir, err)
 	}
 	return nil
 }
 
 func (i *Installer) ExtractIcon() error {
-	cmd := exec.Command("/opt/cursor.AppImage", "--appimage-extract")
+	cmd := exec.Command(filepath.Join(installDir, appImage), "--appimage-extract")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract AppImage: %v", err)
 	}
@@ -83,7 +118,7 @@ func (i *Installer) ExtractIcon() error {
 		return fmt.Errorf("icon not found in extracted contents: %v", err)
 	}
 
-	cmd = exec.Command("sudo", "mv", iconPath, "/opt/cursor.png")
+	cmd = exec.Command("sudo", "mv", iconPath, filepath.Join(installDir, "cursor.png"))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to move icon: %v", err)
 	}
@@ -96,13 +131,14 @@ func (i *Installer) ExtractIcon() error {
 }
 
 func (i *Installer) CreateDesktopEntry() error {
-	desktopEntry := `[Desktop Entry]
+	desktopEntry := fmt.Sprintf(`[Desktop Entry]
 Name=Cursor
-Exec=/opt/cursor.AppImage
-Icon=/opt/cursor.png
+Exec=%s
+Icon=%s
 Type=Application
 Categories=Development;
-`
+`, filepath.Join(installDir, appImage), filepath.Join(installDir, "cursor.png"))
+
 	cmd := exec.Command("sudo", "bash", "-c", fmt.Sprintf("echo '%s' > /usr/share/applications/cursor.desktop", desktopEntry))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to create desktop entry: %v", err)
@@ -111,7 +147,7 @@ Categories=Development;
 }
 
 func (i *Installer) CreateSymlink() error {
-	cmd := exec.Command("sudo", "ln", "-sf", "/opt/cursor.AppImage", "/usr/local/bin/cursor")
+	cmd := exec.Command("sudo", "ln", "-sf", filepath.Join(installDir, appImage), "/usr/local/bin/cursor")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to create symlink: %v", err)
 	}
