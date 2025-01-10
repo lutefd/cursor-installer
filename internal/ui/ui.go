@@ -96,6 +96,11 @@ func NewModel(downloadOnly, forceInstall bool) model {
 				message: "Creating symlink in /usr/local/bin...",
 				run:     installer.CreateSymlink,
 			},
+			InstallationStep{
+				name:    "Update Metadata",
+				message: "Recording installation information...",
+				run:     installer.UpdateMetadata,
+			},
 		)
 	}
 
