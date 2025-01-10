@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 const (
@@ -18,7 +20,9 @@ const (
 type Installer struct {
 	downloadOnly bool
 	forceInstall bool
+	version      string
 }
+
 type InstallationStatus struct {
 	AlreadyUpToDate bool
 	CurrentVersion  string
@@ -87,6 +91,21 @@ func (i *Installer) DownloadCursor() error {
 		return fmt.Errorf("failed to download Cursor: %v", err)
 	}
 	defer resp.Body.Close()
+
+	contentDisposition := resp.Header.Get("Content-Disposition")
+	var originalFilename string
+	if strings.Contains(contentDisposition, "filename=") {
+		originalFilename = strings.Split(contentDisposition, "filename=")[1]
+		originalFilename = strings.Trim(originalFilename, "\"")
+	}
+
+	if originalFilename != "" {
+		re := regexp.MustCompile(`cursor-(.+?)(?:x86_64)?\.AppImage`)
+		matches := re.FindStringSubmatch(originalFilename)
+		if len(matches) > 1 {
+			i.version = matches[1]
+		}
+	}
 
 	out, err := os.Create(appImage)
 	if err != nil {
