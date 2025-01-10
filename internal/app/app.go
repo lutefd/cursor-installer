@@ -55,7 +55,7 @@ func (i *Installer) CheckInstallation() *InstallationStatus {
 	if metadata == nil {
 		_, err := os.Stat(filepath.Join(installDir, appImage))
 		if os.IsNotExist(err) {
-			return &InstallationStatus{} // Not installed, good to proceed
+			return &InstallationStatus{}
 		}
 		if err != nil {
 			return &InstallationStatus{Error: fmt.Errorf("failed to check installation: %v", err)}
