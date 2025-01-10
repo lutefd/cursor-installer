@@ -82,6 +82,11 @@ func NewModel(downloadOnly, forceInstall bool) model {
 				run:     installer.MoveToOpt,
 			},
 			InstallationStep{
+				name:    "Extract Icon",
+				message: "Extracting application icon...",
+				run:     installer.ExtractIcon,
+			},
+			InstallationStep{
 				name:    "Desktop Entry",
 				message: "Creating desktop entry...",
 				run:     installer.CreateDesktopEntry,
