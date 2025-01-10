@@ -20,6 +20,12 @@ type Installer struct {
 	forceInstall bool
 }
 
+type InstallationStatus struct {
+	AlreadyUpToDate bool
+	CurrentVersion  string
+	Error           error
+}
+
 func NewInstaller(downloadOnly, forceInstall bool) *Installer {
 	return &Installer{
 		downloadOnly: downloadOnly,
@@ -35,36 +41,39 @@ func (i *Installer) ensureInstallDir() error {
 	return nil
 }
 
-func (i *Installer) CheckInstallation() error {
+func (i *Installer) CheckInstallation() *InstallationStatus {
 	metadata, err := i.readMetadata()
 	if err != nil {
-		return fmt.Errorf("failed to read installation metadata: %v", err)
+		return &InstallationStatus{Error: fmt.Errorf("failed to read installation metadata: %v", err)}
 	}
 
 	if metadata == nil {
 		_, err := os.Stat(filepath.Join(installDir, appImage))
 		if os.IsNotExist(err) {
-			return nil
+			return &InstallationStatus{}
 		}
 		if err != nil {
-			return fmt.Errorf("failed to check installation: %v", err)
+			return &InstallationStatus{Error: fmt.Errorf("failed to check installation: %v", err)}
 		}
 		if !i.forceInstall {
-			return fmt.Errorf("cursor is already installed (legacy). Use --force to reinstall")
+			return &InstallationStatus{Error: fmt.Errorf("cursor is already installed (legacy). Use --force to reinstall")}
 		}
-		return nil
+		return &InstallationStatus{}
 	}
 
 	latestVersion, err := i.GetLatestVersion()
 	if err != nil {
-		return fmt.Errorf("failed to check for updates: %v", err)
+		return &InstallationStatus{Error: fmt.Errorf("failed to check for updates: %v", err)}
 	}
 
 	if latestVersion != metadata.Version || i.forceInstall {
-		return nil
+		return &InstallationStatus{}
 	}
 
-	return fmt.Errorf("cursor version %s is already installed and up to date", metadata.Version)
+	return &InstallationStatus{
+		AlreadyUpToDate: true,
+		CurrentVersion:  metadata.Version,
+	}
 }
 
 func (i *Installer) DownloadCursor() error {
