@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-const InstallerVersion = "0.3.1"
+const InstallerVersion = "0.4.0"
 
 type VersionInfo struct {
 	CursorVersion    string
