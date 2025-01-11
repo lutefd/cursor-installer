@@ -38,7 +38,7 @@ func (i *Installer) CheckSudoAccess() error {
 	cmd := exec.Command("sudo", "-n", "true")
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("this installer requires sudo privileges. Please ensure you have sudo access and try again")
+		return fmt.Errorf("this installer requires sudo privileges. Please ensure you have sudo access and try again. You can run `sudo usermod -aG sudo <user>` to add your user to the sudoers group")
 	}
 	return nil
 }
