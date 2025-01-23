@@ -46,7 +46,10 @@ func (i *Installer) DownloadCursor() error {
 	}
 
 	if originalFilename != "" {
-		re := regexp.MustCompile(`cursor-(.+?)(?:x86_64)?\.AppImage`)
+		re, err := regexp.Compile(`cursor-(.+?)(?:x86_64)?\.AppImage`)
+		if err != nil {
+			return fmt.Errorf("failed to compile regex: %v", err)
+		}
 		matches := re.FindStringSubmatch(originalFilename)
 		if len(matches) > 1 {
 			i.version = matches[1]
